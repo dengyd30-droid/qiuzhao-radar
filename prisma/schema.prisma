@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompanyRecruitmentStatus {
+  NOT_OPEN
+  OPEN
+  PARTIALLY_OPEN
+  CLOSED
+}
+
+enum JobType {
+  FULL_TIME
+  INTERNSHIP
+}
+
+enum EducationLevel {
+  COLLEGE
+  BACHELOR
+  MASTER
+  PHD
+  UNLIMITED
+}
+
+enum ApplicationStage {
+  SAVED
+  APPLIED
+  WRITTEN_TEST
+  INTERVIEW
+  OFFER
+  REJECTED
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  name         String?
+  graduationAt DateTime?
+  school       String?
+  major        String?
+  degree       EducationLevel?
+  targetCities String[]
+  targetRoles  String[]
+  skills       String[]
+  minSalary    Int?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  favorites    Favorite[]
+  applications Application[]
+  matchScores  MatchScore[]
+}
+
+model Company {
+  id                String                   @id @default(cuid())
+  name              String                   @unique
+  slug              String                   @unique
+  logo              String?
+  industry          String
+  size              String?
+  location          String?
+  website           String?
+  recruitmentStatus CompanyRecruitmentStatus @default(NOT_OPEN)
+  recruitmentUrl    String?
+  openedAt          DateTime?
+  closesAt          DateTime?
+  verifiedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  jobs              Job[]
+}
+
+model Job {
+  id               String         @id @default(cuid())
+  title            String
+  slug             String         @unique
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  description      String
+  responsibilities String[]
+  requirements     String[]
+  highlights       String[]
+  city             String
+  cities           String[]
+  category         String
+  jobType          JobType        @default(FULL_TIME)
+  education        EducationLevel @default(BACHELOR)
+  salaryMin        Int?
+  salaryMax        Int?
+  salaryMonths     Int?
+  sourceUrl        String?
+  publishedAt      DateTime
+  deadlineAt       DateTime?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  favorites        Favorite[]
+  applications     Application[]
+  matchScores      MatchScore[]
+
+  @@index([publishedAt])
+  @@index([city, category, education])
+  @@index([companyId, isActive])
+}
+
+model Favorite {
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@id([userId, jobId])
+}
+
+model Application {
+  id           String           @id @default(cuid())
+  userId       String
+  jobId        String
+  stage        ApplicationStage @default(SAVED)
+  appliedAt    DateTime?
+  nextActionAt DateTime?
+  note         String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job          Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, stage])
+}
+
+model MatchScore {
+  id           String   @id @default(cuid())
+  userId       String
+  jobId        String
+  score        Int
+  reasons      String[]
+  gaps         String[]
+  model        String   @default("rules-v1")
+  calculatedAt DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, score])
+}
